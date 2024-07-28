@@ -17,12 +17,6 @@ type ActiveStream = {
   untrack: () => void;
 };
 
-/** @internal */
-type ActiveAndPending = Readonly<{
-  active: ActiveStream;
-  pending: ReadonlyArray<Buffer> | undefined;
-}>;
-
 /**
  * RangeFinder is the main API workhorse of the module. It manages the `storage`
  * object and is responsible for tracking the number of bytes read and written
@@ -48,19 +42,13 @@ export class RangeFinder<Context = void> {
     const maybeActive = this.getActiveStream(startOffset);
 
     let active: ActiveStream;
-    let pending: ReadonlyArray<Buffer> | undefined;
     if (maybeActive === undefined) {
-      ({ active, pending } = this.getCachedOrCreate(startOffset, context));
+      active = this.getCachedOrCreate(startOffset, context);
     } else {
       active = maybeActive;
     }
 
     const transform = new SkipTransform(startOffset - active.offset);
-    if (pending !== undefined) {
-      for (const buf of pending) {
-        transform.write(buf);
-      }
-    }
 
     const onError = (err: Error): void => {
       transform.destroy(err);
@@ -94,14 +82,13 @@ export class RangeFinder<Context = void> {
       }
 
       // If transform still has buffered data - unshift it back onto the stream.
-      const readableBuffer = [];
       transform.removeAllListeners('data');
       while (transform.readableLength) {
         const chunk = transform.read();
         assert(chunk, 'Must have a chunk when readableLength != 0');
 
-        readableBuffer.push(chunk);
         active.offset -= chunk.byteLength;
+        active.stream.unshift(chunk);
       }
 
       const unmanage = () => {
@@ -112,7 +99,6 @@ export class RangeFinder<Context = void> {
       const newEntry = {
         stream: active.stream,
         offset: active.offset,
-        pending: readableBuffer,
         unmanage,
       };
 
@@ -133,12 +119,11 @@ export class RangeFinder<Context = void> {
   private getCachedOrCreate(
     startOffset: number,
     context: Context,
-  ): ActiveAndPending {
+  ): ActiveStream {
     const entry = this.storage.take(startOffset, context);
 
     let stream: Readable;
     let offset: number;
-    let pending: ReadonlyArray<Buffer> | undefined;
     if (entry !== undefined) {
       entry.unmanage();
 
@@ -147,11 +132,6 @@ export class RangeFinder<Context = void> {
         startOffset >= offset,
         'Storage returned entry with invalid offset',
       );
-
-      pending = entry.pending;
-      for (const buf of pending) {
-        offset += buf.byteLength;
-      }
 
       stream = entry.stream;
     } else {
@@ -184,7 +164,7 @@ export class RangeFinder<Context = void> {
     };
     this.activeStreams.add(active);
 
-    return { active, pending };
+    return active;
   }
 
   /** @internal */

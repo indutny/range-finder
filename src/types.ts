@@ -1,5 +1,4 @@
 import { type Readable } from 'node:stream';
-import { type Buffer } from 'node:buffer';
 
 export type StorageEntry = Readonly<{
   /**
@@ -13,8 +12,6 @@ export type StorageEntry = Readonly<{
    */
   offset: number;
 
-  /** @internal */
-  pending: ReadonlyArray<Buffer>;
   /** @internal */
   unmanage: () => void;
 }>;
