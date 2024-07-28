@@ -3,6 +3,7 @@ import { type Buffer } from 'node:buffer';
 // TODO: Switch to node:stream once
 // https://github.com/nodejs/node/commit/50695e5d gets into Electron.
 import { Transform } from 'readable-stream';
+
 /**
  * @internal
  */
