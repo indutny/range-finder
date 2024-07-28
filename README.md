@@ -18,8 +18,8 @@ decrypted data.
 `range-finder` is is an aid for these (perhaps niche) cases. Instead of creating
 a brand new stream for every request it stores and tracks previously created
 streams that were no fully read, and attempts to reuse them when requesting
-subsequent data. While this module is not a silver bullet, it can cut number of
-the created streams up to 4x in such cases.
+subsequent data. For the example of Chromium video loader above, using this
+module reduces the created streams from ~200 to ~3.
 
 ## Installation
 
