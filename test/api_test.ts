@@ -159,3 +159,34 @@ test('it does not reuse active stream that is too far ahead', async (t) => {
   r.get(0);
   t.is(streamCount, 2);
 });
+
+test('it correctly reuses active stream for earlier offset', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+    },
+  );
+  const r = new RangeFinder(storage);
+
+  const a = r.get(25);
+  const b = r.get(5);
+  t.is(streamCount, 1);
+
+  await once(b, 'readable');
+  const bChunk = b.read()?.toString();
+  t.is(bChunk, TEST_DATA.slice(5, CHUNK_SIZE));
+  b.destroy();
+  await once(b, 'close');
+
+  await once(a, 'readable');
+  const aChunk = a.read()?.toString();
+  t.is(aChunk, TEST_DATA.slice(25, 30));
+  a.destroy();
+  await once(a, 'close');
+});
