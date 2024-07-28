@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { Buffer } from 'node:buffer';
 import { type Readable } from 'node:stream';
 
-import { type StorageEntry, type Storage } from './types.d';
+import { type StorageEntry, type Storage } from './types';
 import SkipTransform from './skip-transform';
 import { DefaultStorage, DefaultStorageOptions } from './default-storage';
 

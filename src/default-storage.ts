@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { type Readable } from 'node:stream';
 
-import { type StorageEntry, type Storage } from './types.d';
+import { type StorageEntry, type Storage } from './types';
 
 export type DefaultStorageOptions = Readonly<{
   /**
