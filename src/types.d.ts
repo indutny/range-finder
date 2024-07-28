@@ -14,7 +14,7 @@ export type StorageEntry = Readonly<{
   offset: number;
 
   /** @internal */
-  prepend: ReadonlyArray<Buffer>;
+  pending: ReadonlyArray<Buffer>;
   /** @internal */
   unmanage: () => void;
 }>;

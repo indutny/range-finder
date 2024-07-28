@@ -1,8 +1,8 @@
 import test from 'ava';
-import { Readable } from 'node:stream';
 import { once } from 'node:events';
 
 import RangeFinder, { DefaultStorage } from '../src/index';
+import { chunkedReadable } from './_helpers';
 
 const TEST_DATA = '0123456789abcdefghijABCDEFGHIJ';
 const CHUNK_SIZE = 10;
@@ -13,12 +13,7 @@ test('it caches streams', async (t) => {
   const storage = new DefaultStorage(
     () => {
       streamCount++;
-
-      const buffer = [];
-      for (let i = 0; i < TEST_DATA.length; i += CHUNK_SIZE) {
-        buffer.push(TEST_DATA.slice(i, i + CHUNK_SIZE));
-      }
-      return Readable.from(buffer);
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
     },
     {
       maxSize: 100,
@@ -63,4 +58,79 @@ test('it caches streams', async (t) => {
   // Pick up the 1st stream again
   await getChunk(CHUNK_SIZE, CHUNK_SIZE);
   t.is(streamCount, 2);
+});
+
+test('it reuses active streams', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+    },
+  );
+  const r = new RangeFinder(storage);
+
+  const a = r.get(0);
+  const b = r.get(10);
+  t.is(streamCount, 1);
+
+  await once(a, 'readable');
+  const aChunk = a.read()?.toString();
+  t.is(aChunk, TEST_DATA.slice(0, CHUNK_SIZE));
+  a.destroy();
+  await once(a, 'close');
+
+  await once(b, 'readable');
+  const bChunk = b.read()?.toString();
+  t.is(bChunk, TEST_DATA.slice(CHUNK_SIZE, 2 * CHUNK_SIZE));
+  b.destroy();
+  await once(b, 'close');
+});
+
+test('it handles errors', async (t) => {
+  const storage = new DefaultStorage(
+    () => {
+      const result = chunkedReadable(TEST_DATA, CHUNK_SIZE);
+      process.nextTick(() => {
+        result.emit('error', new Error('aborted'));
+      });
+      return result;
+    },
+    {
+      maxSize: 100,
+    },
+  );
+
+  const r = new RangeFinder(storage);
+
+  const a = r.get(0);
+  await t.throwsAsync(once(a, 'data'), { message: 'aborted' });
+});
+
+test('it handles close on managed stream', async (t) => {
+  const storage = new DefaultStorage(
+    () => {
+      const result = chunkedReadable(TEST_DATA, CHUNK_SIZE);
+      process.nextTick(() => {
+        result.destroy();
+      });
+      return result;
+    },
+    {
+      maxSize: 100,
+    },
+  );
+
+  const r = new RangeFinder(storage);
+
+  const a = r.get(0);
+  a.destroy();
+  await once(a, 'close');
+
+  t.pass();
 });

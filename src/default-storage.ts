@@ -119,9 +119,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
   public remove(entry: StorageEntry, context: Context): void {
     const list = this.cache.get(context);
-    if (!list) {
-      return;
-    }
+    assert(list !== undefined, 'Context is unknown');
 
     const index = list.indexOf(entry);
     if (index === -1) {
