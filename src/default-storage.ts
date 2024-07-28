@@ -25,7 +25,7 @@ export type DefaultStorageOptions = Readonly<{
  * - LRU-like limiting behavior.
  * - TTL for stored streams.
  *
- * @see {@link RagneFinder} for details.
+ * @see {@link RangeFinder} for details.
  */
 export class DefaultStorage<Context = void> implements Storage<Context> {
   private readonly cache = new Map<Context, Array<StorageEntry>>();
@@ -39,6 +39,8 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
    * @param createStream - a factory function for creating new streams. Note
    *                       that the stream is fully managed while stored.
    * @param options - configuration options.
+   *
+   * @see {@link DefaultStorageOptions} for configuration details.
    */
   constructor(
     public readonly createStream: (context: Context) => Readable,
