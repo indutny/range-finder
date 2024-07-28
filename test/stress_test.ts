@@ -67,7 +67,6 @@ test('it passes stress test', async (t) => {
   };
 
   await Promise.all(Array.from({ length: WORKER_COUNT }).map(() => worker(0)));
-  console.log(created / RANGE_COUNT / RUN_COUNT / WORKER_COUNT);
 
   // In practice it should be significantly less
   t.assert(created < RANGE_COUNT * RUN_COUNT * WORKER_COUNT);

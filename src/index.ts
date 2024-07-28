@@ -86,6 +86,8 @@ export class RangeFinder<Context = void> {
         return;
       }
 
+      this.activeStreams.delete(active);
+
       // Fully consumed
       if (active.stream.readableEnded) {
         return;
@@ -120,7 +122,6 @@ export class RangeFinder<Context = void> {
 
       active.stream.on('error', onManagedClose);
       active.stream.on('close', onManagedClose);
-      this.activeStreams.delete(active);
 
       this.storage.put(newEntry, context);
     });

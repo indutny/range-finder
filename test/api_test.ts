@@ -134,3 +134,28 @@ test('it handles close on managed stream', async (t) => {
 
   t.pass();
 });
+
+test('it does not reuse active stream that is too far ahead', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+    },
+  );
+  const r = new RangeFinder(storage);
+
+  const a = r.get(0);
+  t.is(streamCount, 1);
+  await once(a, 'readable');
+  const aChunk = a.read()?.toString();
+  t.is(aChunk, TEST_DATA.slice(0, CHUNK_SIZE));
+
+  // This should not reuse the last stream
+  r.get(0);
+  t.is(streamCount, 2);
+});
