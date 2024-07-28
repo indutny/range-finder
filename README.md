@@ -19,7 +19,7 @@ decrypted data.
 a brand new stream for every request it stores and tracks previously created
 streams that were no fully read, and attempts to reuse them when requesting
 subsequent data. While this module is not a silver bullet, it can cut number of
-the created streams in half in such cases.
+the created streams up to 4x in such cases.
 
 ## Installation
 
