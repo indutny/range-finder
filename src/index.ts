@@ -95,6 +95,7 @@ export class RangeFinder<Context = void> {
 
       // If transform still has buffered data - unshift it back onto the stream.
       const readableBuffer = [];
+      transform.removeAllListeners('data');
       while (transform.readableLength) {
         const chunk = transform.read();
         assert(chunk, 'Must have a chunk when readableLength != 0');
