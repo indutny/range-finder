@@ -229,7 +229,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
       return undefined;
     }
 
-    let bestOffset = 0;
+    let bestOffset = -1;
     let bestIndex = -1;
     for (const [i, entry] of list.entries()) {
       // Too far in, can't be reused for this request
