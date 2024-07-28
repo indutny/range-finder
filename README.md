@@ -13,13 +13,13 @@ easily indexable, serving range request still requires decrypting file from the
 beginning. This can become a bottleneck for situations where a video has to be
 served to a browser, since for a 100MB video Chromium would typically make
 hundreds of requests, turning a 100MB video into tens of gigabytes of read and
-decrypted data. While this module is not a silver bullet, it can cut number of
-the created streams in half in such cases.
+decrypted data.
 
-This module is an aid for this (perhaps niche) cases. Instead of creating a
-brand new stream for every request it stores and tracks previously created
+`range-finder` is is an aid for these (perhaps niche) cases. Instead of creating
+a brand new stream for every request it stores and tracks previously created
 streams that were no fully read, and attempts to reuse them when requesting
-subsequent data.
+subsequent data. While this module is not a silver bullet, it can cut number of
+the created streams in half in such cases.
 
 ## Installation
 
