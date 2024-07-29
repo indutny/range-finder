@@ -92,6 +92,28 @@ test('it reuses active streams', async (t) => {
   await once(b, 'close');
 });
 
+test('it does not reuse active streams when configured', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+    },
+  );
+  const r = new RangeFinder(storage, {
+    noActiveReuse: true,
+  });
+
+  r.get(0);
+  r.get(10);
+  t.is(streamCount, 2);
+});
+
 test('it handles errors', async (t) => {
   const storage = new DefaultStorage(
     () => {

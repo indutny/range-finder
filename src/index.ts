@@ -17,6 +17,14 @@ type ActiveStream = {
   untrack: () => void;
 };
 
+export type RangeFinderOptions = Readonly<{
+  /**
+   * If set to `true` the in-flight streams are not reused between different
+   * requests.
+   */
+  noActiveReuse?: boolean;
+}>;
+
 /**
  * RangeFinder is the main API workhorse of the module. It manages the `storage`
  * object and is responsible for tracking the number of bytes read and written
@@ -25,7 +33,10 @@ type ActiveStream = {
 export class RangeFinder<Context = void> {
   private readonly activeStreams = new Map<unknown, Set<ActiveStream>>();
 
-  constructor(private readonly storage: Storage<Context>) {}
+  constructor(
+    private readonly storage: Storage<Context>,
+    private readonly options: RangeFinderOptions = {},
+  ) {}
 
   /**
    * Create a new stream or take a cached stream from the storage and skip
@@ -172,6 +183,10 @@ export class RangeFinder<Context = void> {
 
   /** @internal */
   private addActiveStream(cacheKey: unknown, stream: ActiveStream): void {
+    if (this.options.noActiveReuse) {
+      return;
+    }
+
     let set = this.activeStreams.get(cacheKey);
     if (set === undefined) {
       set = new Set();
@@ -197,6 +212,10 @@ export class RangeFinder<Context = void> {
     cacheKey: unknown,
     startOffset: number,
   ): ActiveStream | undefined {
+    if (this.options.noActiveReuse) {
+      return undefined;
+    }
+
     const set = this.activeStreams.get(cacheKey);
     if (!set) {
       return undefined;
