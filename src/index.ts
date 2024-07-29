@@ -45,7 +45,7 @@ export class RangeFinder<Context = void> {
 
     let active: ActiveStream;
     if (maybeActive === undefined) {
-      active = this.getCachedOrCreate(startOffset, context);
+      active = this.getCachedOrCreate(startOffset, cacheKey, context);
     } else {
       active = maybeActive;
     }
@@ -120,9 +120,9 @@ export class RangeFinder<Context = void> {
 
   private getCachedOrCreate(
     startOffset: number,
+    cacheKey: unknown,
     context: Context,
   ): ActiveStream {
-    const cacheKey = this.storage.getCacheKey(context);
     const entry = this.storage.take(startOffset, context);
 
     let stream: Readable;
