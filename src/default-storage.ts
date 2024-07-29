@@ -144,6 +144,10 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     this.ttlTimerMap.delete(entry);
   }
 
+  public getCacheKey(context: Context): unknown {
+    return this.options.cacheKey ? this.options.cacheKey(context) : context;
+  }
+
   /** @internal */
   private cleanup(): void {
     const oldestContext = this.recentContexts.values().next();
@@ -166,9 +170,5 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
       return;
     }
     clearTimeout(timer);
-  }
-
-  private getCacheKey(context: Context): unknown {
-    return this.options.cacheKey ? this.options.cacheKey(context) : context;
   }
 }

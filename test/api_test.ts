@@ -221,3 +221,29 @@ test('it uses custom cache keys', async (t) => {
   b.destroy();
   await once(b, 'close');
 });
+
+test('it should not reuse streams with different context', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage<string>(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+    },
+  );
+  const r = new RangeFinder<string>(storage);
+
+  const a = r.get(0, 'abc');
+  t.is(streamCount, 1);
+
+  const b = r.get(0, 'bcd');
+  t.is(streamCount, 2);
+
+  a.destroy();
+  await once(a, 'close');
+  b.destroy();
+  await once(b, 'close');
+});

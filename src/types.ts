@@ -58,4 +58,14 @@ export interface Storage<Context = void> {
    * @param context - A context reference that was provided to `put()`.
    */
   remove(entry: StorageEntry, context: Context): void;
+
+  /**
+   * Get a cache key from a given Context. Useful when context object is rich
+   * and not unique, but a sub-property of it (e.g. `context.path`) uniquely
+   * represents the cached value.
+   *
+   * @param context - Typically a file path, but could be an arbitrary object.
+   * @returns An arbitrary string or object to be used as a key for an `Map`
+   */
+  getCacheKey(context: Context): unknown;
 }

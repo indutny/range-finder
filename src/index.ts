@@ -23,7 +23,7 @@ type ActiveStream = {
  * from the source stream so that it could be reused for other requests.
  */
 export class RangeFinder<Context = void> {
-  private readonly activeStreams = new Set<ActiveStream>();
+  private readonly activeStreams = new Map<unknown, Set<ActiveStream>>();
 
   constructor(private readonly storage: Storage<Context>) {}
 
@@ -38,8 +38,10 @@ export class RangeFinder<Context = void> {
    * @returns The wrapped readable stream that should be consumed or destroyed.
    */
   public get(startOffset: number, context: Context): Readable {
+    const cacheKey = this.storage.getCacheKey(context);
+
     // Get existing stream if possible
-    const maybeActive = this.getActiveStream(startOffset);
+    const maybeActive = this.getActiveStream(cacheKey, startOffset);
 
     let active: ActiveStream;
     if (maybeActive === undefined) {
@@ -74,7 +76,7 @@ export class RangeFinder<Context = void> {
         return;
       }
 
-      this.activeStreams.delete(active);
+      this.deleteActiveStream(cacheKey, active);
 
       // Fully consumed
       if (active.stream.readableEnded) {
@@ -120,6 +122,7 @@ export class RangeFinder<Context = void> {
     startOffset: number,
     context: Context,
   ): ActiveStream {
+    const cacheKey = this.storage.getCacheKey(context);
     const entry = this.storage.take(startOffset, context);
 
     let stream: Readable;
@@ -144,7 +147,7 @@ export class RangeFinder<Context = void> {
     const onData = (chunk: string | Buffer): void => {
       active.offset += Buffer.byteLength(chunk);
     };
-    const onClose = () => this.activeStreams.delete(active);
+    const onClose = () => this.deleteActiveStream(cacheKey, active);
     stream.on('data', onData);
     stream.on('close', onClose);
     stream.on('error', onClose);
@@ -162,14 +165,44 @@ export class RangeFinder<Context = void> {
       refCount: 1,
       untrack,
     };
-    this.activeStreams.add(active);
+    this.addActiveStream(cacheKey, active);
 
     return active;
   }
 
   /** @internal */
-  private getActiveStream(startOffset: number): ActiveStream | undefined {
-    for (const active of this.activeStreams) {
+  private addActiveStream(cacheKey: unknown, stream: ActiveStream): void {
+    let set = this.activeStreams.get(cacheKey);
+    if (set === undefined) {
+      set = new Set();
+      this.activeStreams.set(cacheKey, set);
+    }
+    set.add(stream);
+  }
+
+  /** @internal */
+  private deleteActiveStream(cacheKey: unknown, stream: ActiveStream): void {
+    const set = this.activeStreams.get(cacheKey);
+    if (set === undefined) {
+      return;
+    }
+    set.delete(stream);
+    if (set.size === 0) {
+      this.activeStreams.delete(cacheKey);
+    }
+  }
+
+  /** @internal */
+  private getActiveStream(
+    cacheKey: unknown,
+    startOffset: number,
+  ): ActiveStream | undefined {
+    const set = this.activeStreams.get(cacheKey);
+    if (!set) {
+      return undefined;
+    }
+
+    for (const active of set) {
       if (active.offset > startOffset) {
         continue;
       }
