@@ -142,6 +142,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
     this.clearTTLTimer(entry);
     this.ttlTimerMap.delete(entry);
+    this.size -= 1;
   }
 
   public getCacheKey(context: Context): unknown {

@@ -247,3 +247,28 @@ test('it should not reuse streams with different context', async (t) => {
   b.destroy();
   await once(b, 'close');
 });
+
+test('it destroys streams when reaching capacity', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 0,
+    },
+  );
+  const r = new RangeFinder(storage);
+
+  const a = r.get(0);
+  t.is(streamCount, 1);
+  a.destroy();
+  await once(a, 'close');
+
+  const b = r.get(0);
+  t.is(streamCount, 2);
+  b.destroy();
+  await once(b, 'close');
+});
