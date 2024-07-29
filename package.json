@@ -1,6 +1,6 @@
 {
   "name": "@indutny/range-finder",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "Reuse readable streams while serving range requests",
   "main": "dist/src/index.js",
   "module": "dist/esm/src/index.js",
