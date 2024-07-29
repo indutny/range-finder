@@ -190,3 +190,34 @@ test('it correctly reuses active stream for earlier offset', async (t) => {
   a.destroy();
   await once(a, 'close');
 });
+
+test('it uses custom cache keys', async (t) => {
+  let streamCount = 0;
+
+  type Context = {
+    path: string;
+  };
+
+  const storage = new DefaultStorage<Context>(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 100,
+      cacheKey: (ctx) => ctx.path,
+    },
+  );
+  const r = new RangeFinder<Context>(storage);
+
+  const a = r.get(0, { path: 'abc' });
+  t.is(streamCount, 1);
+
+  a.destroy();
+  await once(a, 'close');
+
+  const b = r.get(0, { path: 'abc' });
+  t.is(streamCount, 1);
+  b.destroy();
+  await once(b, 'close');
+});

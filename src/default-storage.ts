@@ -3,7 +3,7 @@ import { type Readable } from 'node:stream';
 
 import { type StorageEntry, type Storage } from './types';
 
-export type DefaultStorageOptions = Readonly<{
+export type DefaultStorageOptions<Context = void> = Readonly<{
   /**
    * Maximum number of stored streams. When this number is reached - the oldest
    * stream from the oldest accessed `Context` gets removed.
@@ -14,6 +14,16 @@ export type DefaultStorageOptions = Readonly<{
    * If present and non-zero - a TTL timeout in milliseconds for stored streams.
    */
   ttl?: number;
+
+  /**
+   * Get a cache key from a given Context. Useful when context object is rich
+   * and not unique, but a sub-property of it (e.g. `context.path`) uniquely
+   * represents the cached value.
+   *
+   * @param context - Typically a file path, but could be an arbitrary object.
+   * @returns An arbitrary string or object to be used as a key for an `Map`
+   */
+  cacheKey?(context: Context): unknown;
 }>;
 
 /**
@@ -28,7 +38,7 @@ export type DefaultStorageOptions = Readonly<{
  * @see {@link RangeFinder} for details.
  */
 export class DefaultStorage<Context = void> implements Storage<Context> {
-  private readonly cache = new Map<Context, Array<StorageEntry>>();
+  private readonly cache = new Map<unknown, Array<StorageEntry>>();
   private readonly recentContexts = new Set<Context>();
   private readonly ttlTimerMap = new WeakMap<StorageEntry, NodeJS.Timeout>();
   private size = 0;
@@ -44,11 +54,12 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
    */
   constructor(
     public readonly createStream: (context: Context) => Readable,
-    private readonly options: DefaultStorageOptions,
+    private readonly options: DefaultStorageOptions<Context>,
   ) {}
 
   public take(startOffset: number, context: Context): StorageEntry | undefined {
-    const list = this.cache.get(context);
+    const cacheKey = this.getCacheKey(context);
+    const list = this.cache.get(cacheKey);
     if (!list) {
       return undefined;
     }
@@ -79,7 +90,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
     list.splice(bestIndex, 1);
     if (list.length === 0) {
-      this.cache.delete(context);
+      this.cache.delete(cacheKey);
     }
 
     this.clearTTLTimer(entry);
@@ -89,7 +100,8 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
   }
 
   public put(entry: StorageEntry, context: Context): void {
-    const list = this.cache.get(context);
+    const cacheKey = this.getCacheKey(context);
+    const list = this.cache.get(cacheKey);
 
     // Move the context down the list
     this.recentContexts.delete(context);
@@ -98,7 +110,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     if (list) {
       list.push(entry);
     } else {
-      this.cache.set(context, [entry]);
+      this.cache.set(cacheKey, [entry]);
     }
 
     if (this.options.ttl) {
@@ -118,7 +130,8 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
   }
 
   public remove(entry: StorageEntry, context: Context): void {
-    const list = this.cache.get(context);
+    const cacheKey = this.getCacheKey(context);
+    const list = this.cache.get(cacheKey);
     assert(list !== undefined, 'Context is unknown');
 
     const index = list.indexOf(entry);
@@ -131,10 +144,12 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     this.ttlTimerMap.delete(entry);
   }
 
+  /** @internal */
   private cleanup(): void {
     const oldestContext = this.recentContexts.values().next();
     assert(!oldestContext.done);
-    const list = this.cache.get(oldestContext.value);
+    const cacheKey = this.getCacheKey(oldestContext.value);
+    const list = this.cache.get(cacheKey);
     assert(list);
     const entry = list.shift();
     assert(entry);
@@ -144,11 +159,16 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     this.clearTTLTimer(entry);
   }
 
+  /** @internal */
   private clearTTLTimer(entry: StorageEntry): void {
     const timer = this.ttlTimerMap.get(entry);
     if (timer === undefined) {
       return;
     }
     clearTimeout(timer);
+  }
+
+  private getCacheKey(context: Context): unknown {
+    return this.options.cacheKey ? this.options.cacheKey(context) : context;
   }
 }
