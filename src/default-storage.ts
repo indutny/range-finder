@@ -132,7 +132,9 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
   public remove(entry: StorageEntry, context: Context): void {
     const cacheKey = this.getCacheKey(context);
     const list = this.cache.get(cacheKey);
-    assert(list !== undefined, 'Context is unknown');
+    if (list === undefined) {
+      return;
+    }
 
     const index = list.indexOf(entry);
     if (index === -1) {
@@ -159,6 +161,10 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     const entry = list.shift();
     assert(entry);
     this.size -= 1;
+
+    if (list.length === 0) {
+      this.cache.delete(cacheKey);
+    }
 
     entry.stream.destroy();
     this.clearTTLTimer(entry);

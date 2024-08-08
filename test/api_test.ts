@@ -294,3 +294,29 @@ test('it destroys streams when reaching capacity', async (t) => {
   b.destroy();
   await once(b, 'close');
 });
+
+test('it does not throw after destroying a stream', async (t) => {
+  let streamCount = 0;
+
+  const storage = new DefaultStorage(
+    () => {
+      streamCount++;
+      return chunkedReadable(TEST_DATA, CHUNK_SIZE);
+    },
+    {
+      maxSize: 1,
+    },
+  );
+  const r = new RangeFinder(storage);
+
+  const a = r.get(10);
+  t.is(streamCount, 1);
+  await once(a, 'readable');
+  a.destroy();
+  await once(a, 'close');
+
+  const b = r.get(0);
+  t.is(streamCount, 2);
+  b.destroy();
+  await once(b, 'close');
+});
