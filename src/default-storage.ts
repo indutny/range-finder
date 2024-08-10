@@ -39,7 +39,7 @@ export type DefaultStorageOptions<Context = void> = Readonly<{
  */
 export class DefaultStorage<Context = void> implements Storage<Context> {
   private readonly cache = new Map<unknown, Array<StorageEntry>>();
-  private readonly recentContexts = new Set<Context>();
+  private readonly recentKeys = new Set<unknown>();
   private readonly ttlTimerMap = new WeakMap<StorageEntry, NodeJS.Timeout>();
   private size = 0;
 
@@ -104,8 +104,8 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     const list = this.cache.get(cacheKey);
 
     // Move the context down the list
-    this.recentContexts.delete(context);
-    this.recentContexts.add(context);
+    this.recentKeys.delete(cacheKey);
+    this.recentKeys.add(cacheKey);
 
     if (list) {
       list.push(entry);
@@ -153,9 +153,9 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
   /** @internal */
   private cleanup(): void {
-    const oldestContext = this.recentContexts.values().next();
-    assert(!oldestContext.done);
-    const cacheKey = this.getCacheKey(oldestContext.value);
+    const oldestKey = this.recentKeys.values().next();
+    assert(!oldestKey.done);
+    const cacheKey = oldestKey.value;
     const list = this.cache.get(cacheKey);
     assert(list);
     const entry = list.shift();
@@ -164,6 +164,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
     if (list.length === 0) {
       this.cache.delete(cacheKey);
+      this.recentKeys.delete(cacheKey);
     }
 
     entry.stream.destroy();
