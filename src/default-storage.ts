@@ -91,6 +91,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     list.splice(bestIndex, 1);
     if (list.length === 0) {
       this.cache.delete(cacheKey);
+      this.recentKeys.delete(cacheKey);
     }
 
     this.clearTTLTimer(entry);
