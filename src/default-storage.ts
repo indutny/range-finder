@@ -90,8 +90,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
 
     list.splice(bestIndex, 1);
     if (list.length === 0) {
-      this.cache.delete(cacheKey);
-      this.recentKeys.delete(cacheKey);
+      this.removeKey(cacheKey);
     }
 
     this.clearTTLTimer(entry);
@@ -142,9 +141,11 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
       return;
     }
     list.splice(index, 1);
+    if (list.length === 0) {
+      this.removeKey(cacheKey);
+    }
 
     this.clearTTLTimer(entry);
-    this.ttlTimerMap.delete(entry);
     this.size -= 1;
   }
 
@@ -164,8 +165,7 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
     this.size -= 1;
 
     if (list.length === 0) {
-      this.cache.delete(cacheKey);
-      this.recentKeys.delete(cacheKey);
+      this.removeKey(cacheKey);
     }
 
     entry.stream.destroy();
@@ -175,9 +175,16 @@ export class DefaultStorage<Context = void> implements Storage<Context> {
   /** @internal */
   private clearTTLTimer(entry: StorageEntry): void {
     const timer = this.ttlTimerMap.get(entry);
+    this.ttlTimerMap.delete(entry);
     if (timer === undefined) {
       return;
     }
     clearTimeout(timer);
+  }
+
+  /** @internal */
+  private removeKey(cacheKey: unknown): void {
+    this.cache.delete(cacheKey);
+    this.recentKeys.delete(cacheKey);
   }
 }
